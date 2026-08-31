@@ -1,0 +1,13 @@
+{
+  "prisma.pinToPrisma6": true,
+  "css.format.enable": true,
+
+  "editor.formatOnSave": true,
+
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[prisma]": {
+    "editor.defaultFormatter": "Prisma.prisma"
+  }
+}

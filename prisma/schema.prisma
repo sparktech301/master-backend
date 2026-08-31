@@ -1,87 +1,98 @@
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
- provider = "postgresql"
- url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-
 enum UserRole {
-    CUSTOMER
-    PROVIDER
-    COUNSELOR
-    ADMIN
-    HR
-    MANAGER
-    SUPPORT
+  CUSTOMER
+  PROVIDER
+  COUNSELOR
+  ADMIN
+  HR
+  MANAGER
+  SUPPORT
 }
 
 enum UserStatus {
-    ACTIVE
-    INACTIVE
-    SUSPENDED
+  ACTIVE
+  INACTIVE
+  SUSPENDED
 }
 
 enum Gender {
-    MAIL
-    FEMAIL
-    OTHER
+  MAIL
+  FEMAIL
+  OTHER
 }
 
 model User {
-    id String @id @default(uuid())
-    phoneNumber String @unique
-    email String? @unique
-    fullName String?
-    avaterUrl String?
-    role UserRole @default(CUSTOMER)
-    status UserStatus @default(ACTIVE)
-    isPhoneVerification Boolean @default(false)
+  id                  String     @id @default(uuid())
+  phoneNumber         String     @unique
+  email               String?    @unique
+  fullName            String?
+  avaterUrl           String?
+  role                UserRole   @default(CUSTOMER)
+  status              UserStatus @default(INACTIVE)
+  isPhoneVerification Boolean    @default(false)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 
-    customerProfile     CustomerProfile?
-    providerProfile     ProviderProfile?
-    counselorProfile    CounselorProfile?
+  counselorProfile CounselorProfile?
+  customerProfile  CustomerProfile?
+  providerProfile  ProviderProfile?
+  refreshTokens    RefreshToken[]
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    @@index([phoneNumber,fullName])
+  @@index([phoneNumber, fullName])
 }
 
 model CustomerProfile {
-    id String @id @default(uuid())
-    userId String @unique
-    user User @relation(fields: [userId],references: [id],onDelete:Cascade )
-    address String?
-    gender Gender?
-    dateOfBirth DateTime?
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  address     String?
+  gender      Gender?
+  dateOfBirth DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ProviderProfile {
-  id             String   @id @default(uuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio            String?
-  experienceYears Int     @default(0)
-  isAvailable    Boolean  @default(true)
-  rating         Float    @default(0.0)
-
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  bio             String?
+  experienceYears Int      @default(0)
+  isAvailable     Boolean  @default(true)
+  rating          Float    @default(0.0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model CounselorProfile {
-  id             String   @id @default(uuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activeChatCount Int     @default(0)
-  isOnline       Boolean  @default(false)
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  activeChatCount Int      @default(0)
+  isOnline        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
