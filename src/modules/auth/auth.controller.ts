@@ -1,10 +1,19 @@
-import { Body, Controller, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Headers,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import type * as express from 'express';
 import { AuthService } from './auth.service';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -30,13 +39,17 @@ export class AuthController {
   }
 
   @Post('logout')
-  logout(@Body() data: RefreshTokenDto) {
-    return this.authService.logout(data.refreshToken);
+  logout(
+    @Body() data: RefreshTokenDto,
+    @Headers('authorization') authorization?: string,
+  ) {
+    const accessToken = authorization?.replace('Bearer', '');
+    return this.authService.logout(data.refreshToken, accessToken);
   }
 
-  @UseGuards()
+  @UseGuards(JwtAuthGuard)
   @Patch('complete-profile')
-  completeProfile(@Body() data: CompleteProfileDto) {
-    return this.authService.completeProfile(data.userId, data);
+  completeProfile(@Body() data: CompleteProfileDto, @Req() req: any) {
+    return this.authService.completeProfile(req.user.id, data);
   }
 }

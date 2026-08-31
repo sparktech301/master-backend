@@ -40,4 +40,7 @@ export class RedisService implements OnModuleDestroy {
   async onModuleDestroy() {
     await this.client.quit();
   }
+  async exists(key: string) {
+    return await this.client.exists(key);
+  }
 }

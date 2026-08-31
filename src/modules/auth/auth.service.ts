@@ -21,6 +21,8 @@ import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { RedisService } from 'src/redis/redis.service';
 
 import {
+  ACCESS_TOKEN_EXPIRY,
+  ACCESS_TOKEN_EXPIRY_SECONDS,
   generateRefreshToken,
   hashToken,
   REFRESH_TOKEN_EXPIRY_DAYS,
@@ -254,7 +256,7 @@ export class AuthService {
     );
   }
 
-  async logout(rawToken: string) {
+  async logout(rawToken: string, accessToken?: string) {
     const tokenHash = hashToken(rawToken);
 
     await this.prisma.refreshToken.updateMany({
@@ -266,6 +268,14 @@ export class AuthService {
         revokedAt: new Date(),
       },
     });
+
+    if (accessToken) {
+      await this.redisService.set(
+        `auth:blacklist:access:${accessToken}`,
+        '1',
+        ACCESS_TOKEN_EXPIRY_SECONDS,
+      );
+    }
 
     return {
       message: 'Logged Out Successfully',
