@@ -161,14 +161,16 @@ export class AuthService {
       throw new BadRequestException('User not found');
     }
 
-    const isEmailExisit = await this.prisma.user.findUnique({
-      where: {
-        email: data.email,
-      },
-    });
+    if (data.email && data.email !== user.email) {
+      const isEmailExisit = await this.prisma.user.findUnique({
+        where: {
+          email: data.email,
+        },
+      });
 
-    if (!isEmailExisit) {
-      throw new BadRequestException('Email already exists');
+      if (isEmailExisit) {
+        throw new BadRequestException('Email already exists');
+      }
     }
 
     return this.prisma.user.update({

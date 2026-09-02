@@ -14,7 +14,7 @@ async function bootstrap() {
   });
 
   // CAPTCHA
-
+  app.enableShutdownHooks();
   app.setGlobalPrefix('api/v1');
 
   app.useGlobalPipes(

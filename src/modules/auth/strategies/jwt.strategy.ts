@@ -29,7 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     const isBlackListed = await this.redisService.exists(
-      `auth:blackList:access:${accessToken}`,
+      `auth:blacklist:access:${accessToken}`,
     );
 
     if (isBlackListed) {
