@@ -14,11 +14,14 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @ApiOperation({ summary: 'Request Otp Via Phone Number' })
   @Post('request-otp')
   requestOtp(@Body() data: RequestOtpDto, @Req() req: express.Request) {
     const ip = req.ip;
@@ -47,6 +50,7 @@ export class AuthController {
     return this.authService.logout(data.refreshToken, accessToken);
   }
 
+  @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
   @Patch('complete-profile')
   completeProfile(@Body() data: CompleteProfileDto, @Req() req: any) {
