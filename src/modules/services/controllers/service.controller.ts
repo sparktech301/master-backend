@@ -15,7 +15,7 @@ export class ServiceController{
     }
     
 
-    @Get('all-services')
+    @Get('all')
     @HttpCode(HttpStatus.OK)
     getAllServices(){
         return this.service.getAllServices()

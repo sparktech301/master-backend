@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -31,10 +32,10 @@ export class CategoryController {
     return this.categoryService.getAllCategory()
   }
 
-  @Get(':id')
+  @Get(':identifier')
   @HttpCode(HttpStatus.OK)
-  getSingleCategory(@Param('id') id:string,@Param('slug') slug:string){
-    return this.categoryService.getSingleCategory(id,slug)
+  getSingleCategory(@Param('identifier') identifier:string){
+    return this.categoryService.getSingleCategory(identifier)
   }
 
   @Patch(':id')
