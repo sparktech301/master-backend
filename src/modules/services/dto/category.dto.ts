@@ -1,0 +1,52 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+
+export class CreateCategoryDto {
+  @ApiProperty({ example: 'AC Repair Services' })
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @ApiProperty({ example: 'ac-repair-services' })
+  @IsString()
+  @IsNotEmpty()
+  slug!: string;
+
+  @ApiProperty({
+    example: 'All kinds of AC servicing & repair',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiProperty({ example: 'https://example.com/icon.png', required: false })
+  @IsString()
+  @IsOptional()
+  iconUrl?: string;
+}
+
+export class UpdateCategoryDto {
+  @ApiProperty({ example: 'AC Repair Services' })
+  @IsString()
+  @IsOptional()
+  name!: string;
+
+  @ApiProperty({ example: 'ac-repair-services' })
+  @IsString()
+  @IsOptional()
+  slug!: string;
+
+  @ApiProperty({
+    example: 'All kinds of AC servicing & repair',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiProperty({ example: 'https://example.com/icon.png', required: false })
+  @IsString()
+  @IsOptional()
+  iconUrl?: string;
+}
