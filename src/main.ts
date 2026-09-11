@@ -1,11 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { RedisIoAdapter } from './redis/redis-io.adapter';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   app.use(helmet());
@@ -15,7 +16,6 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // CAPTCHA
   app.enableShutdownHooks();
   app.setGlobalPrefix('api/v1');
 
@@ -46,9 +46,26 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const redisIoAdapter = new RedisIoAdapter(app);
-  await redisIoAdapter.connectToRedis();
-  app.useWebSocketAdapter(redisIoAdapter);
+  try {
+    await redisIoAdapter.connectToRedis();
+    app.useWebSocketAdapter(redisIoAdapter);
+  } catch (error) {
+    logger.warn(
+      `Redis Socket.IO adapter disabled: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
 
   await app.listen(process.env.PORT ?? 4500);
 }
-bootstrap();
+
+bootstrap().catch((error) => {
+  const logger = new Logger('Bootstrap');
+  logger.error(
+    `Application failed to start: ${
+      error instanceof Error ? error.message : String(error)
+    }`,
+  );
+  process.exit(1);
+});

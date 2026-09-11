@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Headers,
   Patch,
   Post,
@@ -51,6 +52,19 @@ export class AuthController {
   }
 
   @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get logged in user with profile IDs' })
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  me(@Req() req: any) {
+    return this.authService.getMe(req.user.id);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Complete profile and create role profile',
+    description:
+      'Send email, fullName, and role. If role is CUSTOMER, PROVIDER, or COUNSELOR, the matching profile is created automatically.',
+  })
   @UseGuards(JwtAuthGuard)
   @Patch('complete-profile')
   completeProfile(@Body() data: CompleteProfileDto, @Req() req: any) {

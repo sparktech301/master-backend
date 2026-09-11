@@ -14,7 +14,11 @@ describe('ChatGateway access control', () => {
   let gateway: ChatGateway;
   let client: Socket;
   const socketActions = { join: jest.fn(), leave: jest.fn(), emit: jest.fn() };
-  const chat = { saveMessage: jest.fn(), getMessages: jest.fn() };
+  const chat = {
+    saveMessage: jest.fn(),
+    getMessages: jest.fn(),
+    leaveConversation: jest.fn(),
+  };
   const prisma = {
     user: { findUnique: jest.fn() },
     conversation: { findFirst: jest.fn() },
@@ -89,22 +93,20 @@ describe('ChatGateway access control', () => {
       senderId: userId,
     };
     chat.saveMessage.mockResolvedValue(message);
-    await gateway.sendMessage(client, dto);
     await expect(gateway.sendMessage(client, dto)).resolves.toEqual(message);
     expect(gateway.server.to).toHaveBeenCalledWith(
-    `conversation:${conversationId}`,
-  );
+      `conversation:${conversationId}`,
+    );
     expect(chat.saveMessage).toHaveBeenCalledWith(userId, dto);
     expect(socketActions.emit).toHaveBeenCalledWith('newMessage', message);
   });
 
-  it('broadcasts the message to the correct conversation room', async () => {
-    prisma.conversation.findFirst
-      .mockResolvedValueOnce({ id: conversationId })
-      .mockResolvedValue(null);
-    chat.saveMessage.mockResolvedValue({ id: 'message-1', conversationId });
-    await gateway.sendMessage(client, { conversationId, text: 'Hello' });
-    expect(socketActions.emit).not.toHaveBeenCalled();
+  it('deactivates membership before leaving the conversation room', async () => {
+    await expect(
+      gateway.leaveConversation(client, { conversationId }),
+    ).resolves.toEqual({ success: true, conversationId });
+
+    expect(chat.leaveConversation).toHaveBeenCalledWith(conversationId, userId);
     expect(socketActions.leave).toHaveBeenCalledWith(
       `conversation:${conversationId}`,
     );

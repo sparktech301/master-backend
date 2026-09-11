@@ -173,16 +173,96 @@ export class AuthService {
       }
     }
 
-    return this.prisma.user.update({
+    const role = data.role || user.role;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: {
+          id: userid,
+        },
+        data: {
+          fullName: data.fullName || user.fullName,
+          email: data.email || user.email,
+          role,
+        },
+      });
+      if (role === 'CUSTOMER') {
+        await tx.customerProfile.upsert({
+          where: {
+            userId: userid,
+          },
+          update: {},
+          create: {
+            userId: userid,
+          },
+        });
+      }
+      if (role === 'PROVIDER') {
+        await tx.providerProfile.upsert({
+          where: {
+            userId: userid,
+          },
+          update: {},
+          create: {
+            userId: userid,
+          },
+        });
+      }
+      if (role === 'COUNSELOR') {
+        await tx.counselorProfile.upsert({
+          where: {
+            userId: userid,
+          },
+          update: {},
+          create: {
+            userId: userid,
+          },
+        });
+      }
+    });
+
+    return this.getMe(userid);
+  }
+
+  async getMe(userId: string) {
+    return this.prisma.user.findUnique({
       where: {
-        id: userid,
+        id: userId,
       },
-      data: {
-        fullName: data.fullName || user.fullName,
-        email: data.email || user.email,
-        role: data.role || user.role,
+      select: {
+        ...USER_SELECT,
+        avaterUrl: true,
+        customerProfile: {
+          select: {
+            id: true,
+            address: true,
+            gender: true,
+            dateOfBirth: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        providerProfile: {
+          select: {
+            id: true,
+            bio: true,
+            experienceYears: true,
+            isAvailable: true,
+            rating: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        counselorProfile: {
+          select: {
+            id: true,
+            activeChatCount: true,
+            isOnline: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
-      select: USER_SELECT,
     });
   }
 

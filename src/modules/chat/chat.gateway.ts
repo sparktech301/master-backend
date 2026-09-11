@@ -173,22 +173,6 @@ export class ChatGateway implements OnGatewayInit {
   ) {
     const room = this.room(message.conversationId);
     this.server.to(room).emit('newMessage', message);
-
-    // Recheck recipients: leaving membership or logging out revokes delivery too.
-    // This namespace uses the default single-process Socket.IO adapter.
-    // await Promise.all(
-    //   [...this.server.sockets.values()]
-    //     .filter((socket) => socket.rooms.has(room))
-    //     .map(async (socket) => {
-    //       try {
-    //         await this.authorize(socket, message.conversationId);
-    //       } catch {
-    //         await socket.leave(room);
-    //         return;
-    //       }
-    //       socket.emit('newMessage', message);
-    //     }),
-    // );
   }
 
   @SubscribeMessage('getMessages')
