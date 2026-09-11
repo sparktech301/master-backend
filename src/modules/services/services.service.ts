@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import slugify from 'slugify';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 import { CreateServiceDto, UpdateServiceDto } from './dto/service.dto';
