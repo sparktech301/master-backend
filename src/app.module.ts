@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { RedisModule } from './redis/redis.module';
 import { ServiceModule } from './modules/services/services.module';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
@@ -13,7 +14,8 @@ import { ServiceModule } from './modules/services/services.module';
     PrismaModule,
     RedisModule,
     AuthModule,
-    ServiceModule
+    ServiceModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

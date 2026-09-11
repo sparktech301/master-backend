@@ -23,7 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     paylode: { sub: string; phoneNumber: string; role: string },
   ) {
     const authorization = req.headers.authorization;
-    const accessToken = authorization?.replace('Bearer', '');
+    const accessToken = authorization?.replace(/^Bearer\s+/i, '').trim();
     if (!accessToken) {
       throw new UnauthorizedException('Unauthorized');
     }

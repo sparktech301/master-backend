@@ -40,16 +40,17 @@ enum MessageType {
 }
 
 model User {
-  id                  String     @id @default(uuid())
-  phoneNumber         String     @unique
-  email               String?    @unique
+  id                  String            @id @default(uuid())
+  phoneNumber         String            @unique
+  email               String?           @unique
   fullName            String?
   avaterUrl           String?
-  role                UserRole   @default(CUSTOMER)
-  status              UserStatus @default(INACTIVE)
-  isPhoneVerification Boolean    @default(false)
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
+  role                UserRole          @default(CUSTOMER)
+  status              UserStatus        @default(INACTIVE)
+  isPhoneVerification Boolean           @default(false)
+  serviceAssignments  ServiceAssignee[]
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   counselorProfile CounselorProfile?
   customerProfile  CustomerProfile?
@@ -124,18 +125,19 @@ model Category {
 }
 
 model Service {
-  id            String         @id @default(uuid())
+  id            String            @id @default(uuid())
   title         String
   description   String
   price         Float
   durationMin   Int?
   categoryId    String
-  isDeleted     Boolean        @default(false)
-  isActive      Boolean        @default(true)
-  category      Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  isDeleted     Boolean           @default(false)
+  isActive      Boolean           @default(true)
+  category      Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
   conversations Conversation[]
+  assignees     ServiceAssignee[]
 }
 
 model Conversation {
@@ -192,4 +194,20 @@ model Message {
 
   @@index([conversationId])
   @@index([senderId])
+}
+
+model ServiceAssignee {
+  id        String   @id @default(uuid())
+  userId    String
+  serviceId String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serviceId])
+  @@index([userId])
+  @@index([serviceId])
 }

@@ -46,7 +46,7 @@ export class AuthController {
     @Body() data: RefreshTokenDto,
     @Headers('authorization') authorization?: string,
   ) {
-    const accessToken = authorization?.replace('Bearer', '');
+    const accessToken = authorization?.replace(/^Bearer\s+/i, '').trim();
     return this.authService.logout(data.refreshToken, accessToken);
   }
 

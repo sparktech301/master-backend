@@ -1,0 +1,191 @@
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiProperty,
+  ApiPropertyOptional,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import type { Request } from 'express';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ChatGateway } from './chat.gateway';
+import { ChatService } from './chat.service';
+import { CreateConversationDto } from './dto/create-conversation.dto';
+import { SendMessageDto } from './dto/send-message.dto';
+
+export class AddChatParticipantDto {
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  userId!: string;
+}
+
+export class ChatHistoryQueryDto {
+  @ApiPropertyOptional({ default: 50, minimum: 1, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 50;
+
+  @ApiPropertyOptional({ default: 0, minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset = 0;
+}
+
+type AuthenticatedRequest = Request & { user: { id: string } };
+
+@ApiTags('Chat')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard)
+@UsePipes(
+  new ValidationPipe({
+    transform: true,
+    whitelist: true,
+    forbidNonWhitelisted: true,
+  }),
+)
+@Controller('chat')
+export class ChatController {
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly prisma: PrismaService,
+    private readonly chatGateway: ChatGateway,
+  ) {}
+
+  @Post('conversations')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get or create a conversation for your customer profile',
+  })
+  async getOrCreateConversation(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateConversationDto,
+  ) {
+    const profile = await this.prisma.customerProfile.findFirst({
+      where: { id: dto.customerProfileId, userId: req.user.id },
+      select: { id: true },
+    });
+    if (!profile)
+      throw new ForbiddenException('Customer profile access denied');
+
+    const service = await this.prisma.service.findFirst({
+      where: { id: dto.serviceId, isActive: true, isDeleted: false },
+      select: { id: true },
+    });
+    if (!service) throw new BadRequestException('Service is unavailable');
+    return this.chatService.getOrCreateConversation(dto);
+  }
+
+  @Post('conversations/:conversationId/participants')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Conversation owner adds or reactivates a provider/counselor',
+  })
+  async addParticipant(
+    @Req() req: AuthenticatedRequest,
+    @Param('conversationId', new ParseUUIDPipe()) conversationId: string,
+    @Body() dto: AddChatParticipantDto,
+  ) {
+    const owned = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, CustomerProfile: { userId: req.user.id } },
+      select: {
+        id: true,
+        serviceId: true,
+      },
+    });
+    if (!owned)
+      throw new ForbiddenException(
+        'Only the conversation owner can add participants',
+      );
+
+    const participant = await this.prisma.user.findFirst({
+      where: {
+        id: dto.userId,
+        status: 'ACTIVE',
+        role: { in: ['PROVIDER', 'COUNSELOR'] },
+        serviceAssignments: {
+          some: {
+            serviceId: owned.serviceId,
+            isActive: true,
+          },
+        },
+      },
+      select: { id: true },
+    });
+    if (!participant)
+      throw new BadRequestException(
+        'Provider or counselor is not assigned to this service',
+      );
+    return this.chatService.addParticipant(conversationId, dto.userId);
+  }
+
+  @Post('messages')
+  @ApiOperation({
+    summary: 'Save a message and notify connected conversation members',
+  })
+  async sendMessage(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: SendMessageDto,
+  ) {
+    await this.assertAccess(req.user.id, dto.conversationId);
+    if (!dto.text?.trim() && !dto.fileUrl?.trim()) {
+      throw new BadRequestException('Message text or file URL is required');
+    }
+    const message = await this.chatService.saveMessage(req.user.id, dto);
+    await this.chatGateway.publishMessage(message);
+    return message;
+  }
+
+  @Get('conversations/:conversationId/messages')
+  @ApiOperation({ summary: 'Read conversation messages, newest first' })
+  async getMessages(
+    @Req() req: AuthenticatedRequest,
+    @Param('conversationId', new ParseUUIDPipe()) conversationId: string,
+    @Query() query: ChatHistoryQueryDto,
+  ) {
+    await this.assertAccess(req.user.id, conversationId);
+    return this.chatService.getMessages(
+      conversationId,
+      query.limit,
+      query.offset,
+    );
+  }
+
+  private async assertAccess(userId: string, conversationId: string) {
+    const conversation = await this.prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        OR: [
+          { CustomerProfile: { userId } },
+          { participants: { some: { userId, isActive: true, leftAt: null } } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!conversation)
+      throw new ForbiddenException('Conversation access denied');
+  }
+}
