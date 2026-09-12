@@ -7,6 +7,9 @@ import { AuthModule } from './modules/auth/auth.module';
 import { RedisModule } from './redis/redis.module';
 import { ServiceModule } from './modules/services/services.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { UserAddressModule } from './modules/user-address/user-address.module';
+import { TechnicianProfileModule } from './modules/technician-profile/technician-profile.module';
+import { ProviderKycModule } from './modules/provider-kyc/provider-kyc.module';
 
 @Module({
   imports: [
@@ -16,6 +19,9 @@ import { ChatModule } from './modules/chat/chat.module';
     AuthModule,
     ServiceModule,
     ChatModule,
+    UserAddressModule,
+    TechnicianProfileModule,
+    ProviderKycModule,
   ],
   controllers: [AppController],
   providers: [AppService],
