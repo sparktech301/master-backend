@@ -21,7 +21,7 @@ describe('ChatGateway access control', () => {
   };
   const prisma = {
     user: { findUnique: jest.fn() },
-    conversation: { findFirst: jest.fn() },
+    chatSession: { findFirst: jest.fn() },
   };
   const jwt = { verifyAsync: jest.fn() };
   const redis = { exists: jest.fn() };
@@ -31,7 +31,7 @@ describe('ChatGateway access control', () => {
     jwt.verifyAsync.mockResolvedValue({ sub: userId, exp: 9999999999 });
     redis.exists.mockResolvedValue(0);
     prisma.user.findUnique.mockResolvedValue({ id: userId, status: 'ACTIVE' });
-    prisma.conversation.findFirst.mockResolvedValue({ id: conversationId });
+    prisma.chatSession.findFirst.mockResolvedValue({ id: conversationId });
     client = {
       handshake: { auth: { token: 'access-token' }, headers: {} },
       ...socketActions,
@@ -68,7 +68,7 @@ describe('ChatGateway access control', () => {
   });
 
   it('denies outsiders access to message history', async () => {
-    prisma.conversation.findFirst.mockResolvedValue(null);
+    prisma.chatSession.findFirst.mockResolvedValue(null);
     await expect(
       gateway.getMessages(client, { conversationId, limit: 50, offset: 0 }),
     ).rejects.toThrow('Conversation access denied');
@@ -90,6 +90,7 @@ describe('ChatGateway access control', () => {
     const message = {
       id: 'message-1',
       ...dto,
+      sessionId: conversationId,
       senderId: userId,
     };
     chat.saveMessage.mockResolvedValue(message);

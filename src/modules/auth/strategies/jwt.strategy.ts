@@ -20,7 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
   async validate(
     req: express.Request,
-    paylode: { sub: string; phoneNumber: string; role: string },
+    paylode: { sub: string; mobileNumber: string; role: string },
   ) {
     const authorization = req.headers.authorization;
     const accessToken = authorization?.replace(/^Bearer\s+/i, '').trim();
@@ -41,12 +41,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       },
       select: {
         id: true,
-        phoneNumber: true,
+        mobileNumber: true,
         email: true,
-        fullName: true,
+        name: true,
         role: true,
         status: true,
-        isPhoneVerification: true,
+        isVerified: true,
       },
     });
 

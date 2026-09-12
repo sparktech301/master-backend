@@ -11,7 +11,7 @@ export class CreateServiceDto {
   @ApiProperty({ example: 'Split AC Basic Servicing' })
   @IsString()
   @IsNotEmpty()
-  title!: string;
+  name!: string;
 
   @ApiProperty({ example: 'Filter cleaning, gas checking and indoor wash' })
   @IsString()
@@ -21,7 +21,7 @@ export class CreateServiceDto {
   @ApiProperty({ example: 800 })
   @IsNumber()
   @IsNotEmpty()
-  price!: number;
+  basePrice!: number;
 
   @ApiProperty({ example: 45 })
   @IsNumber()
@@ -38,7 +38,7 @@ export class UpdateServiceDto {
   @ApiProperty({ example: 'Split AC Basic Servicing' })
   @IsString()
   @IsOptional()
-  title!: string;
+  name!: string;
 
   @ApiProperty({ example: 'Filter cleaning, gas checking and indoor wash' })
   @IsString()
@@ -48,7 +48,7 @@ export class UpdateServiceDto {
   @ApiProperty({ example: 800 })
   @IsNumber()
   @IsOptional()
-  price!: number;
+  basePrice!: number;
 
   @ApiProperty({ example: 45 })
   @IsNumber()

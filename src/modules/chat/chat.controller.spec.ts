@@ -23,7 +23,7 @@ describe('ChatController', () => {
   const prisma = {
     customerProfile: { findFirst: jest.fn() },
     service: { findFirst: jest.fn() },
-    conversation: { findFirst: jest.fn() },
+    chatSession: { findFirst: jest.fn() },
     user: { findFirst: jest.fn() },
   };
   const gateway = { publishMessage: jest.fn() };
@@ -62,7 +62,7 @@ describe('ChatController', () => {
   });
 
   it('prevents a non-owner from adding participants', async () => {
-    prisma.conversation.findFirst.mockResolvedValue(null);
+    prisma.chatSession.findFirst.mockResolvedValue(null);
     await expect(
       controller.addParticipant(req, 'conversation', { userId: 'provider' }),
     ).rejects.toThrow('Only the conversation owner');
@@ -70,7 +70,7 @@ describe('ChatController', () => {
   });
 
   it('allows an owner to add an eligible participant', async () => {
-    prisma.conversation.findFirst.mockResolvedValue({ id: 'conversation' });
+    prisma.chatSession.findFirst.mockResolvedValue({ id: 'conversation' });
     prisma.user.findFirst.mockResolvedValue({ id: 'provider' });
     await controller.addParticipant(req, 'conversation', {
       userId: 'provider',
@@ -82,7 +82,7 @@ describe('ChatController', () => {
   });
 
   it('denies message history to outsiders', async () => {
-    prisma.conversation.findFirst.mockResolvedValue(null);
+    prisma.chatSession.findFirst.mockResolvedValue(null);
     await expect(
       controller.getMessages(req, 'conversation', { limit: 50, offset: 0 }),
     ).rejects.toThrow('Conversation access denied');
@@ -90,7 +90,7 @@ describe('ChatController', () => {
   });
 
   it('rejects blank messages', async () => {
-    prisma.conversation.findFirst.mockResolvedValue({ id: 'conversation' });
+    prisma.chatSession.findFirst.mockResolvedValue({ id: 'conversation' });
     await expect(
       controller.sendMessage(req, {
         conversationId: 'conversation',
@@ -101,7 +101,7 @@ describe('ChatController', () => {
   });
 
   it('uses the authenticated sender and publishes the saved message', async () => {
-    prisma.conversation.findFirst.mockResolvedValue({ id: 'conversation' });
+    prisma.chatSession.findFirst.mockResolvedValue({ id: 'conversation' });
     const dto = { conversationId: 'conversation', text: 'Hello' };
     const message = { id: 'message', ...dto };
     chat.saveMessage.mockResolvedValue(message);

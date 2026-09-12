@@ -28,28 +28,28 @@ export class CategoryController {
 
   @Get('all')
   @HttpCode(HttpStatus.OK)
-  getAllCategory(){
-    return this.categoryService.getAllCategory()
+  getAllCategory() {
+    return this.categoryService.getAllCategory();
   }
 
   @Get(':identifier')
   @HttpCode(HttpStatus.OK)
-  getSingleCategory(@Param('identifier') identifier:string){
-    return this.categoryService.getSingleCategory(identifier)
+  getSingleCategory(@Param('identifier') identifier: string) {
+    return this.categoryService.getSingleCategory(identifier);
   }
 
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
-  updateSingleCategory(@Param('id') id:string,@Body() data:UpdateCategoryDto){
-    return this.categoryService.updateSingleCategory(id,data)
+  updateSingleCategory(
+    @Param('id') id: string,
+    @Body() data: UpdateCategoryDto,
+  ) {
+    return this.categoryService.updateSingleCategory(id, data);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  deleteSingleCategory(@Param('id') id:string){
-    return this.categoryService.deleteSingleCategory(id)
+  deleteSingleCategory(@Param('id') id: string) {
+    return this.categoryService.deleteSingleCategory(id);
   }
-  
-
-  
 }

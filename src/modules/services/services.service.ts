@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import slugify from 'slugify';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
@@ -11,58 +15,53 @@ export class ServicesService {
   async createCategory(data: CreateCategoryDto) {
     const slug = data.slug || slugify(data.name, { lower: true, strict: true });
 
-    const existingCategory = await this.prisma.category.findFirst({
-      where:{
-        OR:[
+    const existingCategory = await this.prisma.serviceCategory.findFirst({
+      where: {
+        OR: [
           {
-            name:data.name
+            name: data.name,
           },
           {
-            slug:slug
-          }
-        ]
-      }
-    })
+            slug: slug,
+          },
+        ],
+      },
+    });
 
-    if(existingCategory){
+    if (existingCategory) {
       throw new BadRequestException('Category already exists');
     }
 
-
-    return this.prisma.category.create({
+    return this.prisma.serviceCategory.create({
       data: { ...data, slug },
     });
   }
 
   async getAllCategory() {
-    return this.prisma.category.findMany({
-      where: { isActive: true,isDeleted:false },
+    return this.prisma.serviceCategory.findMany({
+      where: { isActive: true, isDeleted: false },
       include: { _count: { select: { services: true } } },
     });
   }
 
   async getSingleCategory(identifier: string) {
+    const category = await this.prisma.serviceCategory.findFirst({
+      where: {
+        OR: [{ id: identifier }, { slug: identifier }],
+        isDeleted: false,
+        isActive: true,
+      },
+    });
 
-    const category=await this.prisma.category.findFirst({
-      where:{
-        OR:[
-          {id:identifier},
-          {slug:identifier}
-        ],
-        isDeleted:false,
-        isActive:true
-      }
-    })
-
-    if(!category){
-      throw new NotFoundException("Category not found")
+    if (!category) {
+      throw new NotFoundException('Category not found');
     }
 
-    return category
+    return category;
   }
 
   async updateSingleCategory(id: string, data: UpdateCategoryDto) {
-    return this.prisma.category.update({
+    return this.prisma.serviceCategory.update({
       where: {
         id,
       },
@@ -70,52 +69,52 @@ export class ServicesService {
     });
   }
 
-  async deleteSingleCategory(id:string){
-    return this.prisma.category.update({
-      where:{
-        id
+  async deleteSingleCategory(id: string) {
+    return this.prisma.serviceCategory.update({
+      where: {
+        id,
       },
-      data:{
-        isDeleted:true
-      }
-    })
+      data: {
+        isDeleted: true,
+      },
+    });
   }
 
   async createService(data: CreateServiceDto) {
     console.log(data);
-    
+
     return this.prisma.service.create({ data });
   }
 
   async getAllServices() {
     return this.prisma.service.findMany({
-      where:{
-        isActive:true,
-        isDeleted:false
+      where: {
+        isActive: true,
+        isDeleted: false,
       },
-      include:{
-        category:true
-      }
+      include: {
+        category: true,
+      },
     });
   }
 
   async getSingleService(id: string) {
-    const service=await this.prisma.service.findUnique({
+    const service = await this.prisma.service.findUnique({
       where: {
         id,
-        isActive:true,
-        isDeleted:false
+        isActive: true,
+        isDeleted: false,
       },
-      include:{
-        category:true
-      }
+      include: {
+        category: true,
+      },
     });
 
-    if(!service){
-      throw new NotFoundException("Service not found")
+    if (!service) {
+      throw new NotFoundException('Service not found');
     }
 
-    return service
+    return service;
   }
 
   async updateSingleService(id: string, data: UpdateServiceDto) {
@@ -125,14 +124,14 @@ export class ServicesService {
     });
   }
 
-  async deleteSingleService(id:string){
+  async deleteSingleService(id: string) {
     return this.prisma.service.update({
-      where:{
-        id
+      where: {
+        id,
       },
-      data:{
-        isDeleted:true
-      }
-    })
+      data: {
+        isDeleted: true,
+      },
+    });
   }
 }

@@ -100,11 +100,11 @@ export class ChatGateway implements OnGatewayInit {
 
   private async authorize(client: Socket, conversationId: string) {
     const userId = await this.authenticate(client);
-    const conversation = await this.prisma.conversation.findFirst({
+    const conversation = await this.prisma.chatSession.findFirst({
       where: {
         id: conversationId,
         OR: [
-          { CustomerProfile: { userId } },
+          { customerUser: { id: userId } },
           { participants: { some: { userId, isActive: true, leftAt: null } } },
         ],
       },
@@ -171,7 +171,7 @@ export class ChatGateway implements OnGatewayInit {
   async publishMessage(
     message: Awaited<ReturnType<ChatService['saveMessage']>>,
   ) {
-    const room = this.room(message.conversationId);
+    const room = this.room(message.sessionId);
     this.server.to(room).emit('newMessage', message);
   }
 

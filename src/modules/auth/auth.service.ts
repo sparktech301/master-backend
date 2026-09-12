@@ -30,12 +30,13 @@ import {
 
 const USER_SELECT = {
   id: true,
-  phoneNumber: true,
+  mobileNumber: true,
   email: true,
-  fullName: true,
+  name: true,
+  profilePhoto: true,
   role: true,
   status: true,
-  isPhoneVerification: true,
+  isVerified: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -124,15 +125,15 @@ export class AuthService {
 
     const user = await this.prisma.user.upsert({
       where: {
-        phoneNumber: data.phoneNumber,
+        mobileNumber: data.phoneNumber,
       },
       update: {
-        isPhoneVerification: true,
+        isVerified: true,
         status: 'ACTIVE',
       },
       create: {
-        phoneNumber: data.phoneNumber,
-        isPhoneVerification: true,
+        mobileNumber: data.phoneNumber,
+        isVerified: true,
         status: 'ACTIVE',
       },
       select: USER_SELECT,
@@ -140,7 +141,7 @@ export class AuthService {
 
     // const accessToken = await this.jwtService.signAsync({
     //   sub: user.id,
-    //   phoneNumber: user.phoneNumber,
+    //   mobileNumber: user.mobileNumber,
     //   role: user.role,
     // });
     const tokens = await this.issueTokenPair(user);
@@ -181,7 +182,7 @@ export class AuthService {
           id: userid,
         },
         data: {
-          fullName: data.fullName || user.fullName,
+          name: data.fullName || user.name,
           email: data.email || user.email,
           role,
         },
@@ -231,7 +232,6 @@ export class AuthService {
       },
       select: {
         ...USER_SELECT,
-        avaterUrl: true,
         customerProfile: {
           select: {
             id: true,
@@ -267,12 +267,12 @@ export class AuthService {
   }
 
   private async issueTokenPair(
-    user: { id: string; phoneNumber: string; role: string },
+    user: { id: string; mobileNumber: string; role: string },
     ctx: { userAgent?: string; ipAddress?: string } = {},
   ) {
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
-      phoneNumber: user.phoneNumber,
+      mobileNumber: user.mobileNumber,
       role: user.role,
     });
 
@@ -341,7 +341,7 @@ export class AuthService {
     return this.issueTokenPair(
       {
         id: existing.user.id,
-        phoneNumber: existing.user.phoneNumber,
+        mobileNumber: existing.user.mobileNumber,
         role: existing.user.role,
       },
       ctx,

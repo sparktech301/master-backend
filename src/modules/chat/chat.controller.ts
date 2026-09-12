@@ -29,7 +29,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
-import { CreateConversationDto } from './dto/create-conversation.dto';
+import { CreateChatSessionDto } from './dto/create-chatSession.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 
 export class AddChatParticipantDto {
@@ -82,7 +82,7 @@ export class ChatController {
   })
   async getOrCreateConversation(
     @Req() req: AuthenticatedRequest,
-    @Body() dto: CreateConversationDto,
+    @Body() dto: CreateChatSessionDto,
   ) {
     const profile = await this.prisma.customerProfile.findFirst({
       where: { id: dto.customerProfileId, userId: req.user.id },
@@ -109,8 +109,8 @@ export class ChatController {
     @Param('conversationId', new ParseUUIDPipe()) conversationId: string,
     @Body() dto: AddChatParticipantDto,
   ) {
-    const owned = await this.prisma.conversation.findFirst({
-      where: { id: conversationId, CustomerProfile: { userId: req.user.id } },
+    const owned = await this.prisma.chatSession.findFirst({
+      where: { id: conversationId, customerProfile: { userId: req.user.id } },
       select: {
         id: true,
         serviceId: true,
@@ -175,11 +175,11 @@ export class ChatController {
   }
 
   private async assertAccess(userId: string, conversationId: string) {
-    const conversation = await this.prisma.conversation.findFirst({
+    const conversation = await this.prisma.chatSession.findFirst({
       where: {
         id: conversationId,
         OR: [
-          { CustomerProfile: { userId } },
+          { customerUser: { id: userId } },
           { participants: { some: { userId, isActive: true, leftAt: null } } },
         ],
       },

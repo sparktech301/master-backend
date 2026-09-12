@@ -11,6 +11,7 @@ enum UserRole {
   CUSTOMER
   PROVIDER
   COUNSELOR
+  TECHNICIAN
   ADMIN
   HR
   MANAGER
@@ -24,8 +25,8 @@ enum UserStatus {
 }
 
 enum Gender {
-  MAIL
-  FEMAIL
+  MALE
+  FEMALE
   OTHER
 }
 
@@ -39,61 +40,228 @@ enum MessageType {
   SYSTEM
 }
 
+enum ChatTabCategory {
+  SERVICE
+  ORDER
+  SUPPORT
+}
+
+enum ChatFlowType {
+  CUSTOMER_PROVIDER
+  CUSTOMER_COUNSELOR
+  CUSTOMER_SUPPORT
+}
+
+enum ChatSlotStatus {
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+enum PaymentMode {
+  CASH
+  BKASH
+  NAGAD
+  CARD
+  BANK
+}
+
+enum ConfirmationStatus {
+  PENDING
+  CONFIRMED
+  DISPUTED
+  EXPIRED
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  REFUNDED
+}
+
+enum ProviderLevel {
+  NEW
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum KycStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RevisionStatus {
+  REQUESTED
+  ACCEPTED
+  REJECTED
+  COMPLETED
+}
+
+enum AuditFlowType {
+  CHAT
+  ORDER
+  PAYMENT
+  SYSTEM
+}
+
+enum CounselorActionType {
+  ASSIGNED
+  REASSIGNED
+  CLOSED
+  NOTE_ADDED
+}
+
 model User {
-  id                  String            @id @default(uuid())
-  phoneNumber         String            @unique
-  email               String?           @unique
-  fullName            String?
-  avaterUrl           String?
-  role                UserRole          @default(CUSTOMER)
-  status              UserStatus        @default(INACTIVE)
-  isPhoneVerification Boolean           @default(false)
-  serviceAssignments  ServiceAssignee[]
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
+  id           String     @id @default(uuid())
+  mobileNumber String     @unique @db.VarChar(15)
+  otp          String?    @db.VarChar(8)
+  otpExpire    DateTime?
+  name         String?    @db.VarChar(100)
+  email        String?    @unique
+  dateOfBirth  DateTime?  @db.Date
+  profilePhoto String?    @db.VarChar(255)
+  role         UserRole   @default(CUSTOMER)
+  status       UserStatus @default(INACTIVE)
+  isVerified   Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  counselorProfile CounselorProfile?
-  customerProfile  CustomerProfile?
-  providerProfile  ProviderProfile?
-  refreshTokens    RefreshToken[]
-  chatParticipants ChatParticipant[]
-  messages         Message[]         @relation("SentMessages")
+  addresses             UserAddress[]
+  counselorProfile      CounselorProfile?
+  customerProfile       CustomerProfile?
+  providerProfile       ProviderProfile?
+  technicianProfile     TechnicianProfile?
+  refreshTokens         RefreshToken[]
+  serviceAssignments    ServiceAssignee[]
+  chatParticipants      ChatParticipant[]
+  sentMessages          Message[]          @relation("SentMessages")
+  sentChatAuditLogs     ChatAuditLog[]     @relation("ChatAuditSender")
+  customerChatSessions  ChatSession[]      @relation("ChatSessionCustomer")
+  counselorChatSessions ChatSession[]      @relation("ChatSessionCounselor")
+  providerChatSessions  ChatSession[]      @relation("ChatSessionProvider")
 
-  @@index([phoneNumber, fullName])
+  @@index([mobileNumber, name])
+}
+
+model UserAddress {
+  id          String   @id @default(uuid())
+  userId      String
+  addressText String   @db.Text
+  latitude    Decimal? @db.Decimal(10, 8)
+  longitude   Decimal? @db.Decimal(11, 8)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model CustomerProfile {
-  id            String         @id @default(uuid())
-  userId        String         @unique
-  address       String?
-  gender        Gender?
-  dateOfBirth   DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  conversations Conversation[]
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  address     String?
+  gender      Gender?
+  dateOfBirth DateTime? @db.Date
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatSessions       ChatSession[]       @relation("CustomerProfileChatSessions")
+  activeChatSlots    ActiveChatSlot[]
+  orders             Order[]
+  providerReviews    ProviderReview[]
+  customerRetentions CustomerRetention[]
 }
 
 model ProviderProfile {
-  id              String   @id @default(uuid())
-  userId          String   @unique
-  bio             String?
-  experienceYears Int      @default(0)
-  isAvailable     Boolean  @default(true)
-  rating          Float    @default(0.0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String        @id @default(uuid())
+  userId               String        @unique
+  bio                  String?
+  rating               Decimal       @default(0.0) @db.Decimal(3, 2)
+  totalCompletedOrders Int           @default(0)
+  level                ProviderLevel @default(NEW)
+  experienceYears      Int           @default(0)
+  isAvailable          Boolean       @default(true)
+  monthlyEarnings      Decimal       @default(0.0) @db.Decimal(10, 2)
+  walletBalance        Decimal       @default(0.0) @db.Decimal(10, 2)
+  isBlockedForNegative Boolean       @default(false)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kyc                ProviderKyc?
+  technicianProfiles TechnicianProfile[] @relation("ProviderAgencyTechnicians")
+  activeChatSlots    ActiveChatSlot[]
+  orders             Order[]
+  providerReviews    ProviderReview[]
+  customerRetentions CustomerRetention[]
 }
 
 model CounselorProfile {
-  id              String   @id @default(uuid())
-  userId          String   @unique
-  activeChatCount Int      @default(0)
-  isOnline        Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  activeChatCount    Int      @default(0)
+  isOnline           Boolean  @default(false)
+  maxConcurrentLimit Int      @default(0)
+  avgResponseTimeSec Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auditLogs CounselorAuditLog[]
+}
+
+model TechnicianProfile {
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  providerAgencyId String?
+  lastLoginAt      DateTime?
+  invitedAt        DateTime?
+  currentLat       Decimal?  @db.Decimal(10, 8)
+  currentLong      Decimal?  @db.Decimal(11, 8)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerAgency ProviderProfile? @relation("ProviderAgencyTechnicians", fields: [providerAgencyId], references: [id], onDelete: SetNull)
+  orders         Order[]
+
+  @@index([providerAgencyId])
+}
+
+model ProviderKyc {
+  id             String    @id @default(uuid())
+  providerId     String    @unique
+  nidNumber      String?   @db.VarChar(30)
+  tradeLicenseNo String?   @db.VarChar(40)
+  status         KycStatus @default(PENDING)
+  nidFrontUrl    String?   @db.VarChar(255)
+  nidBackUrl     String?   @db.VarChar(255)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
 }
 
 model RefreshToken {
@@ -111,89 +279,42 @@ model RefreshToken {
   @@index([userId])
 }
 
-model Category {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  slug        String    @unique
-  description String?
-  iconUrl     String?
-  isDeleted   Boolean   @default(false)
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  services    Service[]
+model ServiceCategory {
+  id           String   @id @default(uuid())
+  name         String   @unique @db.VarChar(100)
+  slug         String   @unique
+  description  String?
+  iconUrl      String?  @db.VarChar(255)
+  isFixedPrice Boolean  @default(false)
+  basePrice    Decimal  @default(0.0) @db.Decimal(10, 2)
+  isActive     Boolean  @default(true)
+  isDeleted    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  services Service[]
 }
 
 model Service {
-  id            String            @id @default(uuid())
-  title         String
-  description   String
-  price         Float
-  durationMin   Int?
-  categoryId    String
-  isDeleted     Boolean           @default(false)
-  isActive      Boolean           @default(true)
-  category      Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  conversations Conversation[]
-  assignees     ServiceAssignee[]
-}
+  id           String   @id @default(uuid())
+  categoryId   String
+  name         String   @db.VarChar(100)
+  description  String?  @db.VarChar(255)
+  isFixedPrice Boolean  @default(false)
+  basePrice    Decimal  @default(0.0) @db.Decimal(10, 2)
+  durationMin  Int?
+  isActive     Boolean  @default(true)
+  isDeleted    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-model Conversation {
-  id           String            @id @default(uuid())
-  customerId   String
-  serviceId    String
-  participants ChatParticipant[]
-  messages     Message[]
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  category           ServiceCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  chatSessions       ChatSession[]
+  activeChatSlots    ActiveChatSlot[]
+  orders             Order[]
+  serviceAssignments ServiceAssignee[]
 
-  CustomerProfile CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  Service         Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@unique([customerId, serviceId])
-  @@index([customerId])
-  @@index([serviceId])
-}
-
-model ChatParticipant {
-  id             String    @id @default(uuid())
-  conversationId String
-  joinedAt       DateTime  @default(now())
-  leftAt         DateTime?
-  isActive       Boolean   @default(true)
-  userId         String
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  @@unique([conversationId, userId])
-  @@index([conversationId])
-  @@index([userId])
-}
-
-// 4. Message Model
-model Message {
-  id             String      @id @default(uuid())
-  conversationId String
-  text           String?     @db.Text
-  fileUrl        String?
-  type           MessageType @default(TEXT)
-  isRead         Boolean     @default(false)
-  isSend         Boolean     @default(false)
-  isDeleted      Boolean     @default(false)
-  senderId       String
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-
-  @@index([conversationId])
-  @@index([senderId])
+  @@index([categoryId])
 }
 
 model ServiceAssignee {
@@ -210,4 +331,231 @@ model ServiceAssignee {
   @@unique([userId, serviceId])
   @@index([userId])
   @@index([serviceId])
+}
+
+model ChatSession {
+  id                String          @id @default(uuid())
+  customerId        String
+  counselorId       String?
+  providerId        String?
+  customerProfileId String
+  serviceId         String
+  tabCategory       ChatTabCategory @default(SERVICE)
+  flowType          ChatFlowType    @default(CUSTOMER_PROVIDER)
+  assignedAt        DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  customerUser       User                @relation("ChatSessionCustomer", fields: [customerId], references: [id], onDelete: Cascade)
+  counselorUser      User?               @relation("ChatSessionCounselor", fields: [counselorId], references: [id], onDelete: SetNull)
+  providerUser       User?               @relation("ChatSessionProvider", fields: [providerId], references: [id], onDelete: SetNull)
+  customerProfile    CustomerProfile     @relation("CustomerProfileChatSessions", fields: [customerProfileId], references: [id], onDelete: Cascade)
+  service            Service             @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  participants       ChatParticipant[]
+  messages           Message[]
+  chatAuditLogs      ChatAuditLog[]
+  counselorAuditLogs CounselorAuditLog[]
+
+  @@unique([customerProfileId, serviceId])
+  @@index([customerId])
+  @@index([counselorId])
+  @@index([providerId])
+  @@index([customerProfileId])
+  @@index([serviceId])
+}
+
+model ChatParticipant {
+  id        String    @id @default(uuid())
+  sessionId String
+  userId    String
+  joinedAt  DateTime  @default(now())
+  leftAt    DateTime?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model Message {
+  id        String      @id @default(uuid())
+  sessionId String
+  senderId  String
+  text      String?     @db.Text
+  fileUrl   String?
+  type      MessageType @default(TEXT)
+  isRead    Boolean     @default(false)
+  isSend    Boolean     @default(false)
+  isDeleted Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sender  User        @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([senderId])
+}
+
+model ChatAuditLog {
+  id             BigInt        @id @default(autoincrement())
+  sessionId      String
+  senderId       String?
+  flowType       AuditFlowType
+  messageType    MessageType?
+  messagePayload Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sender  User?       @relation("ChatAuditSender", fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([senderId])
+}
+
+model ActiveChatSlot {
+  id         String         @id @default(uuid())
+  providerId String
+  customerId String
+  serviceId  String
+  status     ChatSlotStatus @default(ACTIVE)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  customer CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  service  Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+  @@index([customerId])
+  @@index([serviceId])
+}
+
+model CustomerRetention {
+  id            String   @id @default(uuid())
+  providerId    String
+  customerId    String
+  isChatActive  Boolean  @default(true)
+  removedReason String?  @db.VarChar(255)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  customer CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, customerId])
+  @@index([providerId])
+  @@index([customerId])
+}
+
+model Order {
+  id              String        @id @default(uuid())
+  providerId      String
+  customerId      String
+  technicianId    String?
+  serviceId       String
+  originalPrice   Decimal       @db.Decimal(10, 2)
+  adminCommission Decimal       @default(0.0) @db.Decimal(10, 2)
+  additionalPrice Decimal       @default(0.0) @db.Decimal(10, 2)
+  totalPrice      Decimal       @db.Decimal(10, 2)
+  priceEditCount  Int           @default(0)
+  advancePaid     Decimal       @default(0.0) @db.Decimal(10, 2)
+  dueAmount       Decimal       @default(0.0) @db.Decimal(10, 2)
+  paymentStatus   PaymentStatus @default(UNPAID)
+  orderStatus     OrderStatus   @default(PENDING)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  provider       ProviderProfile     @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  customer       CustomerProfile     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  technician     TechnicianProfile?  @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+  service        Service             @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  paymentAndTip  OrderPaymentAndTip?
+  revisions      ServiceRevision[]
+  providerReview ProviderReview?
+
+  @@index([providerId])
+  @@index([customerId])
+  @@index([technicianId])
+  @@index([serviceId])
+}
+
+model OrderPaymentAndTip {
+  id                   String             @id @default(uuid())
+  orderId              String             @unique
+  paymentMode          PaymentMode
+  serviceAmountPaid    Decimal            @default(0.0) @db.Decimal(10, 2)
+  tipAmount            Decimal            @default(0.0) @db.Decimal(10, 2)
+  hasTip               Boolean            @default(false)
+  confirmationStatus   ConfirmationStatus @default(PENDING)
+  confirmationDeadline DateTime?
+  customerConfirmedAt  DateTime?
+  disputeReason        String?            @db.Text
+  varianceFlag         Boolean            @default(false)
+  isGuestOrder         Boolean            @default(false)
+  completedByPartner   Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model ServiceRevision {
+  id                String         @id @default(uuid())
+  orderId           String
+  issueDescription  String         @db.Text
+  attachedImages    String[]
+  revisionStatus    RevisionStatus @default(REQUESTED)
+  warrantyExpiresAt DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model ProviderReview {
+  id                   String           @id @default(uuid())
+  orderId              String           @unique
+  providerId           String
+  customerId           String
+  customerRating       Int
+  providerRating       Int?
+  reviewComment        String?          @db.Text
+  continueWithProvider Boolean          @default(false)
+  isPublic             Boolean          @default(true)
+  moderationStatus     ModerationStatus @default(PENDING)
+  status               UserStatus       @default(ACTIVE)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  order    Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  customer CustomerProfile @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+  @@index([customerId])
+}
+
+model CounselorAuditLog {
+  id          String              @id @default(uuid())
+  counselorId String
+  sessionId   String
+  actionType  CounselorActionType
+  remarks     String?             @db.VarChar(255)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  counselor CounselorProfile @relation(fields: [counselorId], references: [id], onDelete: Cascade)
+  session   ChatSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([counselorId])
+  @@index([sessionId])
 }

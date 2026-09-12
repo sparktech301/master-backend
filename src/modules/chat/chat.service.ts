@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CreateConversationDto } from './dto/create-conversation.dto';
+import { CreateChatSessionDto } from './dto/create-chatSession.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { MessageType, UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -13,17 +13,31 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class ChatService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getOrCreateConversation(data: CreateConversationDto) {
-    return this.prisma.conversation.upsert({
+  async getOrCreateConversation(data: CreateChatSessionDto) {
+    const customerProfile = await this.prisma.customerProfile.findUnique({
       where: {
-        customerId_serviceId: {
-          customerId: data.customerProfileId,
+        id: data.customerProfileId,
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    if (!customerProfile) {
+      throw new NotFoundException('Customer profile not found');
+    }
+
+    return this.prisma.chatSession.upsert({
+      where: {
+        customerProfileId_serviceId: {
+          customerProfileId: data.customerProfileId,
           serviceId: data.serviceId,
         },
       },
       update: {},
       create: {
-        customerId: data.customerProfileId,
+        customerId: customerProfile.userId,
+        customerProfileId: data.customerProfileId,
         serviceId: data.serviceId,
       },
       include: {
@@ -35,11 +49,11 @@ export class ChatService {
       },
     });
   }
-  async addParticipant(conversationId: string, userId: string) {
+  async addParticipant(sessionId: string, userId: string) {
     return this.prisma.chatParticipant.upsert({
       where: {
-        conversationId_userId: {
-          conversationId,
+        sessionId_userId: {
+          sessionId,
           userId,
         },
       },
@@ -48,7 +62,7 @@ export class ChatService {
         leftAt: null,
       },
       create: {
-        conversationId,
+        sessionId,
         userId,
         isActive: true,
       },
@@ -60,7 +74,7 @@ export class ChatService {
 
   async saveMessage(senderId: string, dto: SendMessageDto) {
     return this.prisma.$transaction(async (tx) => {
-      const conversation = await tx.conversation.findUnique({
+      const conversation = await tx.chatSession.findUnique({
         where: {
           id: dto.conversationId,
         },
@@ -118,7 +132,7 @@ export class ChatService {
 
       const message = await tx.message.create({
         data: {
-          conversationId: dto.conversationId,
+          sessionId: dto.conversationId,
           senderId,
           text: dto.text,
           fileUrl: dto.fileUrl,
@@ -129,7 +143,7 @@ export class ChatService {
           sender: {
             select: {
               id: true,
-              fullName: true,
+              name: true,
               email: true,
               role: true,
             },
@@ -137,7 +151,7 @@ export class ChatService {
         },
       });
 
-      await tx.conversation.update({
+      await tx.chatSession.update({
         where: {
           id: dto.conversationId,
         },
@@ -150,10 +164,10 @@ export class ChatService {
     });
   }
 
-  async getMessages(conversationId: string, limit = 50, offset = 0) {
+  async getMessages(sessionId: string, limit = 50, offset = 0) {
     return this.prisma.message.findMany({
       where: {
-        conversationId,
+        sessionId,
         isDeleted: false,
       },
       orderBy: {
@@ -165,7 +179,7 @@ export class ChatService {
         sender: {
           select: {
             id: true,
-            fullName: true,
+            name: true,
             role: true,
           },
         },
@@ -173,10 +187,10 @@ export class ChatService {
     });
   }
 
-  async leaveConversation(conversationId: string, userId: string) {
+  async leaveConversation(sessionId: string, userId: string) {
     return this.prisma.chatParticipant.updateMany({
       where: {
-        conversationId,
+        sessionId,
         userId,
         isActive: true,
       },
